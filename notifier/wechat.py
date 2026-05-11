@@ -23,7 +23,7 @@ class WeChatNotifier:
         if settings.serverchan_sendkey:
             logger.info("使用 Server 酱推送")
             return "serverchan"
-        elif settings.ge We_bot_url:
+        elif settings.gewe_bot_url:
             return "gewe"
         elif settings.wcf_host and settings.wcf_host != "127.0.0.1":
             return "wcf"
@@ -146,12 +146,12 @@ class WeChatNotifier:
 
     async def _push_gewe(self, message: str) -> bool:
         """Gewebot 推送"""
-        if not settings.ge We_bot_url:
+        if not settings.gewe_bot_url:
             return False
 
-        url = f"{settings.ge We_bot_url}/api/v1/message/text"
+        url = f"{settings.gewe_bot_url}/api/v1/message/text"
         headers = {
-            "Authorization": f"Bearer {settings.ge We_bot_token}",
+            "Authorization": f"Bearer {settings.gewe_bot_token}",
             "Content-Type": "application/json"
         }
         data = {"content": message}
