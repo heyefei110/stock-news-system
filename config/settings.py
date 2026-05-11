@@ -59,6 +59,12 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        populate_by_name = True
+
+    # 定义字段别名，支持不同命名风格
+    serverchan_sendkey: str = ""
+    DASHSCOPE_API_KEY: str = ""
+    SERVERCHAN_SENDKEY: str = ""
 
 
 settings = Settings()

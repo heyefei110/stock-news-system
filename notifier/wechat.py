@@ -19,7 +19,9 @@ class WeChatNotifier:
 
     def _detect_push_method(self) -> str:
         """检测可用的推送方式"""
+        logger.info(f"检测推送方式：serverchan_sendkey={settings.serverchan_sendkey[:10] if settings.serverchan_sendkey else 'None'}...")
         if settings.serverchan_sendkey:
+            logger.info("使用 Server 酱推送")
             return "serverchan"
         elif settings.ge We_bot_url:
             return "gewe"

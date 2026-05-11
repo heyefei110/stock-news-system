@@ -69,6 +69,13 @@ class StockNewsSystem:
         job_id = f"job_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         logger.info(f"开始执行任务：{job_id}")
 
+        # 调试信息：检查配置
+        logger.info(f"=== 配置检查 ===")
+        logger.info(f"ServerChan SendKey: {'已配置' if settings.serverchan_sendkey else '未配置'}")
+        logger.info(f"通义千问 API Key: {'已配置' if settings.dashscope_api_key else '未配置'}")
+        logger.info(f"股票列表：{[s['name'] for s in self.stocks]}")
+        logger.info(f"================")
+
         start_time = datetime.now()
         status = "success"
         error_message = ""
@@ -82,6 +89,11 @@ class StockNewsSystem:
 
             if not all_news:
                 logger.warning("未采集到任何新闻")
+                # 即使没有新闻，也发送一条通知
+                await self.notifier.send_alert(
+                    alert_type="股票资讯日报",
+                    message="今日暂无相关新闻资讯"
+                )
                 return True
 
             # 2. 数据清洗
