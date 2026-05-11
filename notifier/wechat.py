@@ -36,24 +36,13 @@ class WeChatNotifier:
         stock_news_map: Dict[str, List[NewsItem]],
         retry_count: int = 3
     ) -> bool:
-        """
-        推送新闻到微信
-
-        Args:
-            stock_news_map: 按股票分组的新闻字典
-            retry_count: 重试次数
-
-        Returns:
-            是否推送成功
-        """
+        """推送新闻到微信"""
         if not stock_news_map:
             logger.info("没有需要推送的新闻")
             return True
 
-        # 生成推送内容
         message = self._format_message(stock_news_map)
 
-        # 尝试推送
         for attempt in range(retry_count):
             try:
                 success = await self._do_push(message)
@@ -69,23 +58,16 @@ class WeChatNotifier:
         logger.error("微信推送失败，已达到最大重试次数")
         return False
 
-    def _format_message(
-        self,
-        stock_news_map: Dict[str, List[NewsItem]]
-    ) -> str:
-        """
-        格式化推送消息
-        """
+    def _format_message(self, stock_news_map: Dict[str, List[NewsItem]]) -> str:
+        """格式化推送消息"""
         lines = []
         total_news = sum(len(v) for v in stock_news_map.values())
 
-        # 标题
         lines.append("【股票资讯日报】")
         lines.append(f"推送时间：{datetime.now().strftime('%m-%d %H:%M')}")
         lines.append(f"总计：{len(stock_news_map)} 只股票，{total_news} 条资讯")
         lines.append("=" * 40)
 
-        # 按股票输出
         for stock_name, news_list in stock_news_map.items():
             if not news_list:
                 continue
@@ -177,12 +159,7 @@ class WeChatNotifier:
         logger.info(message)
         return True
 
-    async def send_alert(
-        self,
-        alert_type: str,
-        message: str,
-        error: Optional[str] = None
-    ) -> bool:
+    async def send_alert(self, alert_type: str, message: str, error: Optional[str] = None) -> bool:
         """发送告警"""
         alert_msg = f"""[系统告警]
 类型：{alert_type}
@@ -191,18 +168,9 @@ class WeChatNotifier:
 {f'错误：{error}' if error else ''}"""
 
         success = await self._do_push(alert_msg)
-
-        if not success and settings.smtp_user:
-            await self._send_email_alert(alert_type, message, error)
-
         return success
 
-    async def _send_email_alert(
-        self,
-        alert_type: str,
-        message: str,
-        error: Optional[str] = None
-    ) -> bool:
+    async def _send_email_alert(self, alert_type: str, message: str, error: Optional[str] = None) -> bool:
         """邮件告警"""
         import smtplib
         from email.mime.text import MIMEText
