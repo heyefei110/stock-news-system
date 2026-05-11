@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票资讯系统 - 管理后台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        .navbar {
+            background: #1a73e8;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar h1 { font-size: 1.5rem; }
+        .navbar nav a {
+            color: white;
+            text-decoration: none;
+            margin-left: 1.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .navbar nav a:hover { background: rgba(255,255,255,0.1); }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .card-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #eee;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        .card-body { padding: 1.5rem; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-card.success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+        .stat-card.warning { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .stat-value { font-size: 2.5rem; font-weight: bold; }
+        .stat-label { font-size: 0.9rem; opacity: 0.9; margin-top: 0.5rem; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #555;
+        }
+        tr:hover { background: #f8f9fa; }
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .badge-info { background: #d1ecf1; color: #0c5460; }
+        .btn {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.8; }
+        .btn-primary { background: #1a73e8; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.85rem; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        .form-control {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>股票资讯系统</h1>
+        <nav>
+            <a href="/">首页</a>
+            <a href="/stocks">股票管理</a>
+            <a href="/logs">日志查询</a>
+            <a href="/settings">系统设置</a>
+        </nav>
+    </div>
+
+    <div class="container">
+        <!-- 统计卡片 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">{{ stocks|length }}</div>
+                <div class="stat-label">监控股票数</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-value">{{ job_logs.selectattr('status', 'equalto', 'success')|list|length }}</div>
+                <div class="stat-label">今日成功任务</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-value">{{ job_logs.selectattr('status', 'equalto', 'failed')|list|length }}</div>
+                <div class="stat-label">今日失败任务</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="stat-value">{{ push_records|length }}</div>
+                <div class="stat-label">推送记录</div>
+            </div>
+        </div>
+
+        <!-- 最近推送记录 -->
+        <div class="card">
+            <div class="card-header">最近推送记录</div>
+            <div class="card-body">
+                {% if push_records %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>推送时间</th>
+                            <th>股票数</th>
+                            <th>消息数</th>
+                            <th>状态</th>
+                            <th>重试次数</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in push_records %}
+                        <tr>
+                            <td>{{ record.push_time }}</td>
+                            <td>{{ record.stock_count }}</td>
+                            <td>{{ record.news_count }}</td>
+                            <td>
+                                {% if record.status == 'success' %}
+                                <span class="badge badge-success">成功</span>
+                                {% else %}
+                                <span class="badge badge-danger">失败</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ record.retry_count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color: #999; text-align: center; padding: 2rem;">暂无推送记录</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 最近任务日志 -->
+        <div class="card">
+            <div class="card-header">最近任务日志</div>
+            <div class="card-body">
+                {% if job_logs %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>任务名称</th>
+                            <th>开始时间</th>
+                            <th>结束时间</th>
+                            <th>耗时</th>
+                            <th>处理记录数</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in job_logs %}
+                        <tr>
+                            <td>{{ log.job_name }}</td>
+                            <td>{{ log.start_time }}</td>
+                            <td>{{ log.end_time }}</td>
+                            <td>
+                                {% if log.start_time and log.end_time %}
+                                {{ ((log.end_time - log.start_time)|total_seconds|int) }}秒
+                                {% endif %}
+                            </td>
+                            <td>{{ log.records_processed }}</td>
+                            <td>
+                                {% if log.status == 'success' %}
+                                <span class="badge badge-success">成功</span>
+                                {% elif log.status == 'partial' %}
+                                <span class="badge badge-warning">部分成功</span>
+                                {% else %}
+                                <span class="badge badge-danger">失败</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color: #999; text-align: center; padding: 2rem;">暂无任务日志</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统设置 - 股票资讯系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        .navbar {
+            background: #1a73e8;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar h1 { font-size: 1.5rem; }
+        .navbar nav a {
+            color: white;
+            text-decoration: none;
+            margin-left: 1.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+        }
+        .navbar nav a:hover { background: rgba(255,255,255,0.1); }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .card-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #eee;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        .card-body { padding: 1.5rem; }
+        .form-group { margin-bottom: 1.25rem; }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #555;
+        }
+        .form-group small {
+            display: block;
+            margin-top: 0.25rem;
+            color: #999;
+            font-size: 0.85rem;
+        }
+        .form-control {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .btn-primary { background: #1a73e8; color: white; }
+        .btn-primary:hover { background: #1557b0; }
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #1a73e8;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border-radius: 4px;
+        }
+        .info-box h4 { margin-bottom: 0.5rem; color: #1a73e8; }
+        .info-box p { color: #555; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>股票资讯系统</h1>
+        <nav>
+            <a href="/">首页</a>
+            <a href="/stocks">股票管理</a>
+            <a href="/logs">日志查询</a>
+            <a href="/settings">系统设置</a>
+        </nav>
+    </div>
+
+    <div class="container">
+        <div class="info-box">
+            <h4>提示</h4>
+            <p>修改配置后需要重启系统才能生效。部分配置需要在 .env 文件中修改。</p>
+        </div>
+
+        <div class="card">
+            <div class="card-header">推送时间设置</div>
+            <div class="card-body">
+                <form action="/settings/push" method="post">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>任务执行时间 (小时)</label>
+                            <input type="number" name="cron_hour" class="form-control" value="{{ settings.cron_hour }}" min="0" max="23">
+                            <small>定时任务执行的小时数，建议设置为 6 以确保 8:30 前完成</small>
+                        </div>
+                        <div class="form-group">
+                            <label>任务执行时间 (分钟)</label>
+                            <input type="number" name="cron_minute" class="form-control" value="{{ settings.cron_minute }}" min="0" max="59">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>推送截止时间 (小时)</label>
+                            <input type="number" name="push_hour" class="form-control" value="{{ settings.push_hour }}" min="0" max="23">
+                            <small>确保在此时间前完成推送</small>
+                        </div>
+                        <div class="form-group">
+                            <label>推送截止时间 (分钟)</label>
+                            <input type="number" name="push_minute" class="form-control" value="{{ settings.push_minute }}" min="0" max="59">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">保存设置</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">当前配置</div>
+            <div class="card-body">
+                <table style="width: 100%;">
+                    <tr>
+                        <td style="padding: 0.5rem; font-weight: 500;">数据库路径</td>
+                        <td style="padding: 0.5rem;">{{ settings.database_path }}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0.5rem; font-weight: 500;">日志级别</td>
+                        <td style="padding: 0.5rem;">{{ settings.log_level }}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0.5rem; font-weight: 500;">最大重试次数</td>
+                        <td style="padding: 0.5rem;">{{ settings.max_retries }}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0.5rem; font-weight: 500;">推送方式</td>
+                        <td style="padding: 0.5rem;">
+                            {% if settings.serverchan_sendkey %}Server 酱{% endif %}
+                            {% if settings.ge We_bot_url %}Gewebot{% endif %}
+                            {% if settings.wcf_host and settings.wcf_host != '127.0.0.1' %}WeChatFerry{% endif %}
+                            {% if not settings.serverchan_sendkey and not settings.ge We_bot_url and not (settings.wcf_host and settings.wcf_host != '127.0.0.1') %}
+                                <span style="color: #999;">未配置 (日志输出)</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">环境变量配置</div>
+            <div class="card-body">
+                <p style="margin-bottom: 1rem; color: #666;">
+                    以下配置需要在 <code>.env</code> 文件中设置：
+                </p>
+                <ul style="color: #555; line-height: 2;">
+                    <li><code>ANTHROPIC_API_KEY</code> - Claude API 密钥 (用于智能摘要)</li>
+                    <li><code>SERVERCHAN_SENDKEY</code> - Server 酱推送密钥</li>
+                    <li><code>GEWE_BOT_URL</code> - Gewebot 服务地址</li>
+                    <li><code>GEWE_BOT_TOKEN</code> - Gewebot 访问令牌</li>
+                    <li><code>SMTP_*</code> - 邮件告警配置</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

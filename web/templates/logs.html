@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日志查询 - 股票资讯系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        .navbar {
+            background: #1a73e8;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar h1 { font-size: 1.5rem; }
+        .navbar nav a {
+            color: white;
+            text-decoration: none;
+            margin-left: 1.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+        }
+        .navbar nav a:hover { background: rgba(255,255,255,0.1); }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .card-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #eee;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        .card-body { padding: 1.5rem; }
+        .filter-bar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .filter-bar select, .filter-bar input {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #555;
+            white-space: nowrap;
+        }
+        tr:hover { background: #f8f9fa; }
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+        }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .badge-info { background: #d1ecf1; color: #0c5460; }
+        .log-content {
+            max-width: 600px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .tab {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #333;
+            transition: all 0.2s;
+        }
+        .tab.active {
+            background: #1a73e8;
+            color: white;
+            border-color: #1a73e8;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>股票资讯系统</h1>
+        <nav>
+            <a href="/">首页</a>
+            <a href="/stocks">股票管理</a>
+            <a href="/logs">日志查询</a>
+            <a href="/settings">系统设置</a>
+        </nav>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-header">日志查询</div>
+            <div class="card-body">
+                <div class="tabs">
+                    <a href="/logs?log_type=job&days={{ days }}" class="tab {% if log_type == 'job' %}active{% endif %}">任务日志</a>
+                    <a href="/logs?log_type=push&days={{ days }}" class="tab {% if log_type == 'push' %}active{% endif %}">推送记录</a>
+                </div>
+
+                <div class="filter-bar">
+                    <label>时间范围:</label>
+                    <select onchange="location.href=this.value">
+                        <option value="/logs?log_type={{ log_type }}&days=1" {% if days == 1 %}selected{% endif %}>最近 1 天</option>
+                        <option value="/logs?log_type={{ log_type }}&days=7" {% if days == 7 %}selected{% endif %}>最近 7 天</option>
+                        <option value="/logs?log_type={{ log_type }}&days=30" {% if days == 30 %}selected{% endif %}>最近 30 天</option>
+                    </select>
+                </div>
+
+                {% if logs %}
+                <table>
+                    <thead>
+                        {% if log_type == 'job' %}
+                        <tr>
+                            <th>任务名称</th>
+                            <th>开始时间</th>
+                            <th>结束时间</th>
+                            <th>耗时</th>
+                            <th>记录数</th>
+                            <th>状态</th>
+                            <th>错误信息</th>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <th>推送时间</th>
+                            <th>股票数</th>
+                            <th>消息数</th>
+                            <th>状态</th>
+                            <th>重试次数</th>
+                            <th>错误信息</th>
+                        </tr>
+                        {% endif %}
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            {% if log_type == 'job' %}
+                            <td>{{ log.job_name }}</td>
+                            <td>{{ log.start_time or '-' }}</td>
+                            <td>{{ log.end_time or '-' }}</td>
+                            <td>
+                                {% if log.start_time and log.end_time %}
+                                {{ ((log.end_time - log.start_time)|total_seconds|int) if log.end_time and log.start_time else '-' }}秒
+                                {% endif %}
+                            </td>
+                            <td>{{ log.records_processed }}</td>
+                            <td>
+                                {% if log.status == 'success' %}
+                                <span class="badge badge-success">成功</span>
+                                {% elif log.status == 'partial' %}
+                                <span class="badge badge-warning">部分成功</span>
+                                {% else %}
+                                <span class="badge badge-danger">失败</span>
+                                {% endif %}
+                            </td>
+                            <td class="log-content" title="{{ log.error_message or '-' }}">{{ log.error_message or '-' }}</td>
+                            {% else %}
+                            <td>{{ log.push_time }}</td>
+                            <td>{{ log.stock_count or 0 }}</td>
+                            <td>{{ log.news_count or 0 }}</td>
+                            <td>
+                                {% if log.status == 'success' %}
+                                <span class="badge badge-success">成功</span>
+                                {% else %}
+                                <span class="badge badge-danger">失败</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ log.retry_count }}</td>
+                            <td class="log-content">{{ log.error_message or '-' }}</td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color: #999; text-align: center; padding: 2rem;">暂无日志记录</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
