@@ -23,7 +23,7 @@ class WeChatNotifier:
         if settings.serverchan_sendkey:
             logger.info("使用 Server 酱推送")
             return "serverchan"
-        elif settings.ge We_bot_url:
+        elif settings.geWe_bot_url:
             return "gewe"
         elif settings.wcf_host and settings.wcf_host != "127.0.0.1":
             return "wcf"
