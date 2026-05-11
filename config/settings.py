@@ -9,7 +9,10 @@ from datetime import time
 class Settings(BaseSettings):
     """系统配置"""
 
-    # API Keys
+    # API Keys - 通义千问
+    dashscope_api_key: str = ""
+
+    # API Keys - Claude (可选，保留兼容)
     anthropic_api_key: str = ""
 
     # WeChat 推送配置

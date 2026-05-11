@@ -1,5 +1,5 @@
 """
-LLM 智能摘要模块 - 使用 Claude API
+LLM 智能摘要模块 - 使用通义千问 API
 """
 from typing import List, Dict, Optional
 import asyncio
@@ -7,21 +7,22 @@ from datetime import datetime
 from loguru import logger
 from collectors.base import NewsItem
 from config.settings import settings
-import anthropic
+import httpx
 
 
 class NewsSummarizer:
-    """新闻摘要生成器"""
+    """新闻摘要生成器 - 通义千问"""
 
-    def __init__(self, model: str = "claude-sonnet-4-20250514"):
+    def __init__(self, model: str = "qwen-plus"):
         """
         初始化摘要生成器
 
         Args:
-            model: Claude 模型名称
+            model: 通义千问模型名称 (qwen-plus, qwen-turbo, qwen-max)
         """
         self.model = model
-        self.client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+        self.api_key = settings.dashscope_api_key
+        self.api_url = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
 
     async def summarize(
         self,
@@ -71,12 +72,15 @@ class NewsSummarizer:
         """为单条新闻生成摘要"""
         prompt = self._build_prompt(news)
 
-        try:
-            response = await self.client.messages.create(
-                model=self.model,
-                max_tokens=200,
-                temperature=0.3,
-                messages=[
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": self.model,
+            "input": {
+                "messages": [
                     {
                         "role": "system",
                         "content": "你是一个专业的财经新闻摘要生成器。你的任务是从新闻标题和内容中提取关键信息，生成简洁、准确的摘要。"
@@ -86,13 +90,32 @@ class NewsSummarizer:
                         "content": prompt
                     }
                 ]
-            )
+            },
+            "parameters": {
+                "max_tokens": 200,
+                "temperature": 0.3
+            }
+        }
 
-            summary = response.content[0].text.strip()
-            return summary[:300]  # 限制摘要长度
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.post(
+                    self.api_url,
+                    headers=headers,
+                    json=payload
+                )
+                response.raise_for_status()
+                result = response.json()
+
+                # 通义千问返回格式
+                if result.get("output") and result["output"].get("choices"):
+                    summary = result["output"]["choices"][0]["message"]["content"].strip()
+                    return summary[:300]
+                else:
+                    raise ValueError(f"API 返回异常：{result}")
 
         except Exception as e:
-            logger.warning(f"Claude API 调用失败：{e}")
+            logger.warning(f"通义千问 API 调用失败：{e}")
             raise
 
     def _build_prompt(self, news: NewsItem) -> str:
@@ -115,14 +138,12 @@ class NewsSummarizer:
 
     def _fallback_summary(self, news: NewsItem) -> str:
         """降级摘要方案（当 LLM 不可用时）"""
-        # 提取标题关键词作为摘要
         summary_parts = []
 
         if news.title:
             summary_parts.append(f"标题：{news.title}")
 
         if news.content:
-            # 提取内容前 50 字
             content_preview = news.content[:50]
             if len(news.content) > 50:
                 content_preview += "..."
@@ -138,18 +159,8 @@ class NewsSummarizer:
         news_list: List[NewsItem],
         stock_names: List[str]
     ) -> Dict[str, List[NewsItem]]:
-        """
-        使用 LLM 辅助将新闻按股票分类
-
-        Args:
-            news_list: 新闻列表
-            stock_names: 股票名称列表
-
-        Returns:
-            按股票名称分组的新闻字典
-        """
+        """按股票分类（使用规则匹配，简化版）"""
         classified = {name: [] for name in stock_names}
-        unclassified = []
 
         for news in news_list:
             matched = False
@@ -159,71 +170,19 @@ class NewsSummarizer:
                     matched = True
                     break
 
-            # 未匹配的新闻归入"未分类"
             if not matched:
-                # 尝试用 LLM 判断
-                stock_name = await self._classify_single(news, stock_names)
-                if stock_name:
-                    classified[stock_name].append(news)
-                else:
-                    unclassified.append(news)
-
-        if unclassified:
-            logger.info(f"有 {len(unclassified)} 条新闻无法分类")
+                # 未匹配的跳过
+                pass
 
         return classified
-
-    async def _classify_single(
-        self,
-        news: NewsItem,
-        stock_names: List[str]
-    ) -> Optional[str]:
-        """使用 LLM 判断单条新闻属于哪个股票"""
-        if not news.content or len(news.content) < 20:
-            return None
-
-        prompt = f"""判断以下新闻与哪个股票最相关:
-
-候选股票：{', '.join(stock_names)}
-
-新闻标题：{news.title}
-新闻内容：{news.content[:200]}
-
-请只返回最相关的股票名称，如果没有匹配的返回空字符串。"""
-
-        try:
-            response = await self.client.messages.create(
-                model=self.model,
-                max_tokens=10,
-                temperature=0.1,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            )
-
-            result = response.content[0].text.strip()
-            if result in stock_names:
-                return result
-            return None
-
-        except Exception:
-            return None
 
     async def extract_key_info(
         self,
         news_list: List[NewsItem]
     ) -> List[Dict]:
-        """
-        提取新闻的关键信息
-
-        Returns:
-            包含关键信息的字典列表
-        """
+        """提取新闻关键信息"""
         tasks = []
-        for news in news_list[:20]:  # 限制处理数量
+        for news in news_list[:20]:
             tasks.append(self._extract_single(news))
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -258,28 +217,47 @@ class NewsSummarizer:
 
 只返回 JSON，不要其他内容。"""
 
-        try:
-            response = await self.client.messages.create(
-                model=self.model,
-                max_tokens=150,
-                temperature=0.3,
-                messages=[
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": self.model,
+            "input": {
+                "messages": [
                     {
                         "role": "user",
                         "content": prompt
                     }
                 ]
-            )
+            },
+            "parameters": {
+                "max_tokens": 150,
+                "temperature": 0.3
+            }
+        }
 
-            import json
-            result = response.content[0].text.strip()
-            # 提取 JSON 部分
-            start = result.find('{')
-            end = result.rfind('}') + 1
-            if start >= 0 and end > start:
-                return json.loads(result[start:end])
-            else:
-                raise ValueError("无法解析 JSON")
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.post(
+                    self.api_url,
+                    headers=headers,
+                    json=payload
+                )
+                response.raise_for_status()
+                result = response.json()
+
+                if result.get("output") and result["output"].get("choices"):
+                    content = result["output"]["choices"][0]["message"]["content"].strip()
+                    import json
+                    # 提取 JSON 部分
+                    start = content.find('{')
+                    end = content.rfind('}') + 1
+                    if start >= 0 and end > start:
+                        return json.loads(content[start:end])
+
+                raise ValueError("无法解析返回结果")
 
         except Exception as e:
             logger.warning(f"提取关键信息失败：{e}")

@@ -11,16 +11,6 @@ on:
   # 手动触发
   workflow_dispatch:
 
-  # 推送时触发 (测试用)
-  push:
-    branches: [main]
-    paths:
-      - 'collectors/**'
-      - 'processor/**'
-      - 'notifier/**'
-      - 'config/**'
-      - 'main.py'
-
 env:
   PYTHON_VERSION: "3.11"
 
@@ -55,10 +45,8 @@ jobs:
       - name: 创建 .env 文件
         run: |
           cat > .env << EOF
-          ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+          DASHSCOPE_API_KEY=${{ secrets.DASHSCOPE_API_KEY }}
           SERVERCHAN_SENDKEY=${{ secrets.SERVERCHAN_SENDKEY }}
-          GEWE_BOT_URL=${{ secrets.GEWE_BOT_URL }}
-          GEWE_BOT_TOKEN=${{ secrets.GEWE_BOT_TOKEN }}
           DATABASE_PATH=./data/stock_news.db
           LOG_LEVEL=INFO
           EOF
@@ -80,23 +68,3 @@ jobs:
             echo "❌ 任务执行失败"
             exit 1
           fi
-
-      - name: 上传日志 (如果失败)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: error-logs
-          path: logs/
-          retention-days: 7
-
-      - name: 发送失败通知
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `❌ 股票资讯任务执行失败 - ${new Date().toLocaleDateString('zh-CN')}`,
-              body: `任务执行失败，请查看 Actions 日志了解详情。\n\n失败时间：${new Date().toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})}`
-            })
