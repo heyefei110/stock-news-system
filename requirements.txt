@@ -27,9 +27,6 @@ pydantic-settings==2.1.0
 # Logging
 loguru==0.7.2
 
-# SimHash for deduplication
-simhash==2.1.2
-
 # Testing
 pytest==7.4.4
 pytest-asyncio==0.23.3
