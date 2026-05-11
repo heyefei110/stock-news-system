@@ -18,29 +18,32 @@ class SinaCollector(BaseCollector):
         stock_list: List[Dict[str, str]],
         date_range: timedelta = timedelta(days=1)
     ) -> List[NewsItem]:
-        """
-        从新浪财经采集股票新闻
-
-        新浪财经 API:
-        - 港股实时新闻：https://quote.sina.com.cn/hkstock/news/
-        - 新闻列表 API：https://finance.sina.com.cn/stock/relnews/[market]/2024-01-01/[code].json
-        """
+        """从新浪财经采集股票新闻"""
         all_news = []
 
         for stock in stock_list:
             stock_name = stock["name"]
             stock_code = stock["code"]
-            market = stock.get("market", "HK")
+
+            logger.info(f"开始采集 {stock_name} ({stock_code}) 的新闻...")
 
             try:
-                # 搜索股票相关新闻
-                news_list = await self._search_stock_news(stock_name, stock_code)
-                all_news.extend(news_list)
+                # 使用新浪财经搜索 API
+                search_url = "https://quote.sina.com.cn/hkstock/searchNews.php"
+                params = {
+                    "symbol": stock_code.replace(".HK", ""),
+                    "page": 1,
+                    "num": 20
+                }
 
-                # 如果有股票代码，尝试获取特定股票新闻
-                if stock_code:
-                    specific_news = await self._get_stock_specific_news(stock_code, market)
-                    all_news.extend(specific_news)
+                logger.info(f"请求 URL: {search_url}, 参数：{params}")
+
+                response = await self.safe_request(search_url, params=params)
+                logger.info(f"响应状态码：{response.status_code}")
+
+                news_list = self._parse_search_results(response.text, stock_name)
+                logger.info(f"解析到 {len(news_list)} 条新闻")
+                all_news.extend(news_list)
 
             except Exception as e:
                 logger.error(f"新浪财经采集 {stock_name} 失败：{e}")
