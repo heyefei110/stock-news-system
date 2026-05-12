@@ -5,6 +5,7 @@ beautifulsoup4==4.12.3
 lxml==5.1.0
 pandas==2.2.0
 python-dotenv==1.0.0
+akshare==1.15.12
 
 # Database
 sqlite-utils==3.36

@@ -100,8 +100,8 @@ class StockNewsSystem:
             cleaned_news = self.cleaner.clean(all_news)
             logger.info(f"清洗完成，剩余 {len(cleaned_news)} 条")
 
-            # 3. 按日期过滤 (只保留最近 2 天)
-            filtered_news = self.cleaner.filter_by_date(cleaned_news, days=2)
+            # 3. 按日期过滤 (只保留最近 3 天)
+            filtered_news = self.cleaner.filter_by_date(cleaned_news, days=3)
             logger.info(f"日期过滤完成，剩余 {len(filtered_news)} 条")
 
             # 4. 去重
@@ -162,22 +162,31 @@ class StockNewsSystem:
 
     async def _collect_news(self) -> List[NewsItem]:
         """并行采集各平台新闻"""
-        from collectors.simple import SimpleFinanceCollector
-        import httpx
+        from collectors.simple import SimpleFinanceCollector, StockPriceCollector
 
         all_news = []
 
-        # 尝试使用简单的采集器
+        # 1. 采集重要公告和信息（最近 3 天）
         simple_collector = SimpleFinanceCollector()
         try:
             news = await simple_collector.collect(self.stocks)
             all_news.extend(news)
         except Exception as e:
-            logger.error(f"简单采集器失败：{e}")
+            logger.error(f"公告采集器失败：{e}")
 
-        # 如果还是没有数据，生成测试数据用于验证系统
+        # 2. 如果没有重要公告，采集股价摘要
         if not all_news:
-            logger.info("未采集到新闻，生成测试数据...")
+            logger.info("未采集到重要公告，获取股价摘要...")
+            price_collector = StockPriceCollector()
+            try:
+                price_news = await price_collector.collect(self.stocks)
+                all_news.extend(price_news)
+            except Exception as e:
+                logger.error(f"股价采集器失败：{e}")
+
+        # 3. 如果还是没有数据，生成测试数据用于验证系统
+        if not all_news:
+            logger.info("未采集到任何信息，生成测试数据...")
             all_news = self._generate_test_news()
 
         return all_news
