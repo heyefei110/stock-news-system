@@ -2,8 +2,8 @@
 系统配置模块
 """
 from pydantic_settings import BaseSettings
-from typing import List, Optional
-from datetime import time
+from typing import List
+from datetime import datetime
 
 
 class Settings(BaseSettings):
@@ -19,8 +19,6 @@ class Settings(BaseSettings):
     wcf_host: str = "127.0.0.1"
     wcf_port: int = 8080
     serverchan_sendkey: str = ""
-    gewe_bot_url: str = ""
-    gewe_bot_token: str = ""
 
     # 邮件告警配置
     smtp_server: str = ""
@@ -32,7 +30,6 @@ class Settings(BaseSettings):
     # 系统设置
     log_level: str = "INFO"
     database_path: str = "./data/stock_news.db"
-    redis_url: str = "redis://localhost:6379/0"
 
     # 定时任务配置
     cron_hour: int = 6  # 6 点开始执行，确保 8:30 前完成
@@ -51,20 +48,10 @@ class Settings(BaseSettings):
         {"name": "九方智投控股", "code": "09977.HK", "market": "HK"},
     ]
 
-    # 推送时间 (24 小时制)
-    push_hour: int = 8
-    push_minute: int = 30
-
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
-        case_sensitive = False
-        populate_by_name = True
-
-    # 定义字段别名，支持不同命名风格
-    serverchan_sendkey: str = ""
-    DASHSCOPE_API_KEY: str = ""
-    SERVERCHAN_SENDKEY: str = ""
+        extra = "ignore"  # 忽略额外的字段，避免报错
 
 
 settings = Settings()
