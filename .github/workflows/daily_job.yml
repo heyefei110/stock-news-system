@@ -10,6 +10,15 @@ on:
 
   # 手动触发
   workflow_dispatch:
+    inputs:
+      debug:
+        description: '启用调试模式（输出更多信息）'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
 env:
   PYTHON_VERSION: "3.11"
@@ -32,15 +41,12 @@ jobs:
       - name: 安装依赖
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt 2>&1
+          echo "✅ 依赖安装完成"
 
       - name: 创建数据目录
         run: |
           mkdir -p data logs
-
-      - name: 初始化数据库
-        run: |
-          python -m config.database
 
       - name: 创建 .env 文件
         run: |
@@ -50,21 +56,67 @@ jobs:
           DATABASE_PATH=./data/stock_news.db
           LOG_LEVEL=INFO
           EOF
+          echo "✅ .env 文件创建完成"
+
+          # ꪌ证 Secret 是否存在
+          if [ -z "${{ secrets.DASHSCOPE_API_KEY }}" ]; then
+            echo "::warning::DASHSCOPE_API_KEY Secret 未配置"
+          else
+            echo "✅ DASHSCOPE_API_KEY 已配置"
+          fi
+
+          if [ -z "${{ secrets.SERVERCHAN_SENDKEY }}" ]; then
+            echo "::warning::SERVERCHAN_SENDKEY Secret 未配置"
+          else
+            echo "✅ SERVERCHAN_SENDKEY 已配置"
+          fi
+
+      - name: 初始化数据库
+        run: |
+          python -m config.database
+          echo "✅ 数据库初始化完成"
+
+      - name: 验证环境配置
+        run: |
+          echo "=== 环境验证 ==="
+          echo "Python 版本：$(python --version)"
+          echo "当前目录：$(pwd)"
+          echo ".env 文件内容："
+          cat .env | grep -v "KEY" | sed 's/=.*/=***hidden***/'
+          echo "================"
+
+          # ꪌ证 Python 模块导入
+          python -c "from config.settings import settings; print('settings 模块 OK')"
+          python -c "from config.database import init_database; print('database 模块 OK')"
+          python -c "from collectors.simple import SimpleFinanceCollector; print('collectors 模块 OK')"
+          python -c "from processor.summarizer import NewsSummarizer; print('summarizer 模块 OK')"
+          echo "✅ 所有模块导入成功"
 
       - name: 执行采集任务
-        id: run_task
         run: |
           echo "开始执行股票资讯采集任务..."
           echo "执行时间：$(date '+%Y-%m-%d %H:%M:%S')"
+          echo ""
 
+          # 执行任务
           python main.py run
-
           exit_code=$?
-          echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
 
+          echo ""
           if [ $exit_code -eq 0 ]; then
             echo "✅ 任务执行成功"
           else
-            echo "❌ 任务执行失败"
+            echo "❌ 任务执行失败，退出码：$exit_code"
             exit 1
           fi
+
+      - name: 上传日志（如果任务失败）
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-logs
+          path: |
+            logs/
+            data/
+            .env
+          retention-days: 7
