@@ -4,6 +4,7 @@ from collectors.sina import SinaCollector
 from collectors.eastmoney import EastmoneyCollector
 from collectors.xueqiu import XueqiuCollector
 from collectors.tencent import TencentCollector
+from collectors.simple import SimpleFinanceCollector, StockPriceCollector
 
 __all__ = [
     "BaseCollector",
@@ -12,4 +13,6 @@ __all__ = [
     "EastmoneyCollector",
     "XueqiuCollector",
     "TencentCollector",
+    "SimpleFinanceCollector",
+    "StockPriceCollector",
 ]
